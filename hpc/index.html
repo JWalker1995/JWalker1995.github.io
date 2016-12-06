@@ -1,0 +1,100 @@
+<html>
+<head>
+<title>High Performance Computing Signal Generator Project</title>
+<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+<style>
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+td {
+  border: 1px solid silver;
+  text-align: center;
+  width: 1000px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>
+  Signal Generator Example
+</h1>
+
+<div class="demo"></div>
+
+<p>
+  In the table above, each column is a unique message that can be communicated. Each row is a packet that goes over a lossy channel. After we recieve a few packets, we want to be able to un-ambiguously conclude which column was initially sent. If there are duplicate columns after removing lost packets, this will not be possible.
+</p>
+
+<p>
+  This determination is easy when we recieve the first two rows. Each combination of values uniquely determines the column. For example, a 1 then a 3 means the message was the 8th column. However, what if the second packet (second row) was lost? How can we add another row, so that we can recover the message using only the first and third row? If we duplicate the second row, then if the first packet is lost all we have left is two duplicate packets. This is the problem this program attempts to solve.
+</p>
+
+<p style="font-weight: bold;">
+  Note that the above table is interactive - try filling in some values and see if you get conflicts.
+</p>
+
+<p>
+  The signal generator C++ program does these steps:
+</p>
+
+<ol>
+  <li>Append zero to first empty cell</li>
+  <li>Check for conflicts</li>
+  <li>If no conflicts, go to (1)</li>
+  <li>If conflicts occur, increment the number</li>
+  <li>If the number is too high (&gt; 3), clear the cell, increment the previous number, and go to (5) or (6)</li>
+  <li>If the number represents a valid symbol, go to (2)</li>
+</ol>
+
+<p>
+  For example:
+</p>
+
+<ul>
+  <li>Add 0, add 0, see conflict, increment, add 0, see conflict, increment x2, add 0, see conflict, increment x3. Now the third row looks like [0, 1, 2, 3].</li>
+  <li>Add 0, see conflict, increment, add 0, ...</li>
+  <li>When the third row is filled it should look like this: [0, 1, 2, 3, 1, 0, 3, 2, 2, 3, 0, 1, 3, 2, 1, 0]</li>
+  <li>By the same process the fourth and fifth row can be filled, but not a sixth row.</li>
+</ul>
+
+<p>
+  The signal generator C++ program starts N tasks, and each one fills in 8 cells on the third row. Those cells are hashed to a rank. If the hash rank equals the task rank, then the task continues trying to fill in the rest of the table. If it does not equal, then the task stops searching that branch (because another task will search it). The result is that the entire search space is semi-randomly distributed fairly to the tasks.
+</p>
+
+<p>
+  Here is a table found by the MPI program, considering combinations of 3 messages.
+</p>
+
+<table>
+    <tr>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>2</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td><td>3</td>
+    </tr>
+    <tr>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td>1</td><td>2</td><td>2</td><td>2</td><td>2</td><td>3</td><td>3</td><td>3</td><td>3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td>1</td><td>2</td><td>2</td><td>2</td><td>2</td><td>3</td><td>3</td><td>3</td><td>3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td>1</td><td>2</td><td>2</td><td>2</td><td>2</td><td>3</td><td>3</td><td>3</td><td>3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td><td>1</td><td>2</td><td>2</td><td>2</td><td>2</td><td>3</td><td>3</td><td>3</td><td>3</td>
+    </tr>
+    <tr>
+        <td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td><td>0</td><td>1</td><td>2</td><td>3</td>
+    </tr>
+    <tr>
+        <td>0</td><td>1</td><td>2</td><td>3</td><td>2</td><td>3</td><td>0</td><td>1</td><td>3</td><td>2</td><td>1</td><td>0</td><td>1</td><td>0</td><td>3</td><td>2</td><td>1</td><td>0</td><td>3</td><td>2</td><td>3</td><td>2</td><td>1</td><td>0</td><td>2</td><td>3</td><td>0</td><td>1</td><td>0</td><td>1</td><td>2</td><td>3</td><td>2</td><td>3</td><td>0</td><td>1</td><td>0</td><td>1</td><td>2</td><td>3</td><td>1</td><td>0</td><td>3</td><td>2</td><td>3</td><td>2</td><td>1</td><td>0</td><td>3</td><td>2</td><td>1</td><td>0</td><td>1</td><td>0</td><td>3</td><td>2</td><td>0</td><td>1</td><td>2</td><td>3</td><td>2</td><td>3</td><td>0</td><td>1</td>
+    </tr>
+    <tr>
+        <td>0</td><td>1</td><td>2</td><td>3</td><td>1</td><td>0</td><td>3</td><td>2</td><td>2</td><td>3</td><td>0</td><td>1</td><td>3</td><td>2</td><td>1</td><td>0</td><td>2</td><td>3</td><td>0</td><td>1</td><td>3</td><td>2</td><td>1</td><td>0</td><td>0</td><td>1</td><td>2</td><td>3</td><td>1</td><td>0</td><td>3</td><td>2</td><td>3</td><td>2</td><td>1</td><td>0</td><td>2</td><td>3</td><td>0</td><td>1</td><td>1</td><td>0</td><td>3</td><td>2</td><td>0</td><td>1</td><td>2</td><td>3</td><td>1</td><td>0</td><td>3</td><td>2</td><td>0</td><td>1</td><td>2</td><td>3</td><td>3</td><td>2</td><td>1</td><td>0</td><td>2</td><td>3</td><td>0</td><td>1</td>
+    </tr>
+    <tr>
+        <td>0</td><td>1</td><td>2</td><td>3</td><td>3</td><td>2</td><td>1</td><td>0</td><td>1</td><td>0</td><td>3</td><td>2</td><td>2</td><td>3</td><td>0</td><td>1</td><td>3</td><td>2</td><td>1</td><td>0</td><td>0</td><td>1</td><td>2</td><td>3</td><td>2</td><td>3</td><td>0</td><td>1</td><td>1</td><td>0</td><td>3</td><td>2</td><td>1</td><td>0</td><td>3</td><td>2</td><td>2</td><td>3</td><td>0</td><td>1</td><td>0</td><td>1</td><td>2</td><td>3</td><td>3</td><td>2</td><td>1</td><td>0</td><td>2</td><td>3</td><td>0</td><td>1</td><td>1</td><td>0</td><td>3</td><td>2</td><td>3</td><td>2</td><td>1</td><td>0</td><td>0</td><td>1</td><td>2</td><td>3</td>
+    </tr>
+</table>
+
+<p>
+  Note that in this case, it is comparing all combinations of 3 packets. Any 3 packets (rows) recieved is enough to uniquely determine the original column. For example, assume the 2nd, 3rd, and 5th packets are recieved as 3, 0, and 2. Only the 12th column contains these values for those rows. This should be the case for any combination of rows and values that you try.
+</p>
+
+Code is here: <a href="https://github.com/JWalker1995/signal_generator">https://github.com/JWalker1995/signal_generator</a>
+
+<script src="script.js"></script>
+
+</body>
+</html>
